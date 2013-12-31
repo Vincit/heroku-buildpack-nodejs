@@ -81,6 +81,20 @@ fi
   npm install --userconfig $build_dir/.npmrc --production 2>&1 | indent
 )
 
+if [ -f "$build_dir/bower.json" -a -f "$build_dir/node_modules/.bin/bower" ]; then
+  status "Running bower"
+  $build_dir/node_modules/bower/bin/bower --allow-root install 2>&1 | indent
+fi
+
+if [ -f "$build_dir/Gruntfile.js" -a -f "$build_dir/node_modules/.bin/grunt" ]; then
+  status "Running grunt build"
+  grunt_options=""
+  if [ ! -z "$GRUNT_PROFILE" ]; then
+    grunt_options="-profile=$GRUNT_PROFILE"
+  fi
+  $build_dir/node_modules/grunt-cli/bin/grunt $grunt_options build 2>&1 | indent
+fi
+
 status "Caching node_modules directory for future builds"
 rm -rf $cache_dir/node_modules
 mkdir -p $cache_dir
