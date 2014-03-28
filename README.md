@@ -1,8 +1,7 @@
 Heroku Buildpack for Node.js
 ============================
 
-This is the official [Heroku buildpack](http://devcenter.heroku.com/articles/buildpacks) for Node.js apps. If you fork this repository, please **update this README** to explain what your fork does and why it's special.
-
+This fork runs grunt and bower if installed from package.json and properly configured.
 
 How it Works
 ------------
@@ -33,20 +32,6 @@ For more information about using Node.js and buildpacks on Heroku, see these Dev
 - [Getting Started with Node.js on Heroku](https://devcenter.heroku.com/articles/nodejs)
 - [Buildpacks](https://devcenter.heroku.com/articles/buildpacks)
 - [Buildpack API](https://devcenter.heroku.com/articles/buildpack-api)
-
-
-Legacy Compatibility
---------------------
-
-For most Node.js apps this buildpack should work just fine. If, however, you're unable to deploy using this new version of the buildpack, you can get your app working again by using the legacy branch:
-
-```
-heroku config:set BUILDPACK_URL=https://github.com/heroku/heroku-buildpack-nodejs#legacy -a my-app
-git commit -am "empty" --allow-empty # force a git commit
-git push heroku master
-```
-
-Then please open a support ticket at [help.heroku.com](https://help.heroku.com/) so we can diagnose and get your app running on the default buildpack.
 
 Hacking
 -------
