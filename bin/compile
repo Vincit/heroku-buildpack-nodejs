@@ -89,7 +89,7 @@ fi
 
 if [ -f "$build_dir/bower.json" -a -f "$build_dir/node_modules/.bin/bower" ]; then
   status "Running bower"
-  $build_dir/node_modules/bower/bin/bower --allow-root install 2>&1 | indent
+  $build_dir/node_modules/.bin/bower --allow-root install 2>&1 | indent
 fi
 
 if [ -f "$build_dir/Gruntfile.js" -a -f "$build_dir/node_modules/.bin/grunt" ]; then
@@ -98,7 +98,7 @@ if [ -f "$build_dir/Gruntfile.js" -a -f "$build_dir/node_modules/.bin/grunt" ]; 
   if [ ! -z "$GRUNT_PROFILE" ]; then
     grunt_options="-profile=$GRUNT_PROFILE"
   fi
-  $build_dir/node_modules/grunt-cli/bin/grunt $grunt_options build 2>&1 | indent
+  $build_dir/node_modules/.bin/grunt $grunt_options build 2>&1 | indent
 fi
 
 status "Caching node_modules directory for future builds"
