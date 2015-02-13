@@ -77,8 +77,9 @@ fi
 
 if test -d $cache_dir/.cache/bower; then
   echo "-----> Restoring bower cache directory from cache"
-  mkdir -p /.cache
-  cp -r $cache_dir/.cache/bower /.cache/
+  rm -rf $HOME/.cache
+  mkdir -p $HOME/.cache
+  cp -r $cache_dir/.cache/bower $HOME/.cache
 fi
 
 # Scope config var availability only to `npm install`
@@ -115,12 +116,12 @@ test -d $build_dir/node_modules && cp -r $build_dir/node_modules $cache_dir/
 status "Caching bower cache directory for future builds"
 rm -rf $cache_dir/.cache/bower
 mkdir -p $cache_dir/.cache
-test -d /.cache/bower && cp -r /.cache/bower $cache_dir/.cache/
+test -d $HOME/.cache/bower && cp -r $HOME/.cache/bower $cache_dir/.cache/
 
 status "Cleaning up node-gyp and npm artifacts"
 rm -rf "$build_dir/.node-gyp"
 rm -rf "$build_dir/.npm"
-rm -rf "/.cache/bower"
+rm -rf "$HOME/.cache/bower"
 
 # If Procfile is absent, try to create one using `npm start`
 if [ ! -e $build_dir/Procfile ]; then
