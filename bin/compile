@@ -8,6 +8,7 @@ set -o pipefail   # dont ignore exit codes when piping output
 build_dir=$1
 cache_dir=$2
 env_file=$3
+global_cache_dir=/global_cache
 
 bp_dir=$(cd $(dirname $0); cd ..; pwd)
 
@@ -58,6 +59,31 @@ mv $build_dir/node-v$node_version-linux-x64 $build_dir/vendor/node
 chmod +x $build_dir/vendor/node/bin/*
 PATH=$PATH:$build_dir/vendor/node/bin
 
+# symlink from global cache directory
+if [ -d $global_cache_dir ]; then
+  echo "-----> Symlinking global npm cache"
+  mkdir -p $global_cache_dir/.npm
+  rm -rf $build_dir/.npm
+  ln -s $global_cache_dir/.npm $build_dir/.npm
+
+  mkdir -p $global_cache_dir/.cache/bower
+  mkdir -p $HOME/.cache
+  rm -rf $HOME/.cache/bower
+  ln -s $global_cache_dir/.cache/bower $HOME/.cache/bower
+else
+  if test -d $cache_dir/.npm; then
+    echo "-----> Restoring npm cache directory from cache"
+    cp -r $cache_dir/.npm $build_dir/.npm
+  fi
+
+  if test -d $cache_dir/.cache/bower; then
+    echo "-----> Restoring bower cache directory from cache"
+    mkdir -p $HOME/.cache
+    rm -rf $HOME/.cache/bower
+    cp -r $cache_dir/.cache/bower $HOME/.cache/bower
+  fi
+fi
+
 # Run subsequent node/npm commands from the build path
 cd $build_dir
 
@@ -73,13 +99,6 @@ elif test -d $cache_dir/node_modules; then
 
   status "Pruning cached dependencies not specified in package.json"
   npm prune 2>&1 | indent
-fi
-
-if test -d $cache_dir/.cache/bower; then
-  echo "-----> Restoring bower cache directory from cache"
-  rm -rf $HOME/.cache
-  mkdir -p $HOME/.cache
-  cp -r $cache_dir/.cache/bower $HOME/.cache
 fi
 
 # Scope config var availability only to `npm install`
@@ -113,10 +132,17 @@ rm -rf $cache_dir/node_modules
 mkdir -p $cache_dir
 test -d $build_dir/node_modules && cp -r $build_dir/node_modules $cache_dir/
 
-status "Caching bower cache directory for future builds"
-rm -rf $cache_dir/.cache/bower
-mkdir -p $cache_dir/.cache
-test -d $HOME/.cache/bower && cp -r $HOME/.cache/bower $cache_dir/.cache/
+if [ ! -d $global_cache_dir ]; then
+  echo "-----> Caching npm cache directory for future builds"
+  rm -rf $cache_dir/.npm
+  mkdir -p $cache_dir/.npm
+  test -d $build_dir/.npm && cp -r $build_dir/.npm $cache_dir/.npm
+
+  echo "-----> Caching bower cache directory for future builds"
+  rm -rf $cache_dir/.cache/bower
+  mkdir -p $cache_dir/.cache
+  test -d $HOME/.cache/bower && cp -r $HOME/.cache/bower $cache_dir/.cache/
+fi
 
 status "Cleaning up node-gyp and npm artifacts"
 rm -rf "$build_dir/.node-gyp"
