@@ -115,7 +115,7 @@ fi
 
 # Scope config var availability only to `npm install`
 (
-  if [ "$env_file" ]; then
+  if [ -f "$env_file" ]; then
     status "Importing application config vars"
     export $(egrep -v "^(PATH|GIT_DIR|CPATH|CPPATH|LD_PRELOAD|LIBRARY_PATH)" "$env_file")
   fi
