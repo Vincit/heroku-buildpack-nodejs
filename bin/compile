@@ -87,23 +87,35 @@ fi
 # Run subsequent node/npm commands from the build path
 cd $build_dir
 
+committed_node_modules_dirs="$(cd "$build_dir" && find . -type d -name node_modules -not -path '*/node_modules/*' -not -path './vendor/*' | cut -c 3-)"
+cached_node_modules_dirs="$(cd "$cache_dir" && find . -type d -name node_modules -not -path '*/node_modules/*' | cut -c 3-)"
+
 # If node_modules directory is checked into source control then
 # rebuild any native deps. Otherwise, restore from the build cache.
-if test -d $build_dir/node_modules; then
-  status "Found existing node_modules directory; skipping cache"
+if [ ! -z "$committed_node_modules_dirs" ]; then
+  status "Found existing node_modules directories; skipping cache"
   status "Rebuilding any native dependencies"
-  npm rebuild 2>&1 | indent
-elif test -d $cache_dir/node_modules; then
-  status "Restoring node_modules directory from cache"
-  cp -r $cache_dir/node_modules $build_dir/
+  echo "$committed_node_modules_dirs" | while read line
+  do
+    pushd "$build_dir/$(dirname "$line")" >/dev/null && npm rebuild 2>&1 | indent && popd >/dev/null
+  done
+elif [ ! -z "$cached_node_modules_dirs" ]; then
+  status "Restoring node_modules directories from cache"
+  echo "$cached_node_modules_dirs" | while read line
+  do
+    mkdir -p "$build_dir/$(dirname "$line")" && cp -r "$cache_dir/$line" "$build_dir/$(dirname "$line")"
+  done
 
   status "Pruning cached dependencies not specified in package.json"
-  npm prune 2>&1 | indent
+  echo "$cached_node_modules_dirs" | while read line
+  do
+    pushd "$build_dir/$(dirname "$line")" >/dev/null && npm prune 2>&1 | indent && popd >/dev/null
+  done
 fi
 
 # Scope config var availability only to `npm install`
 (
-  if [ "$env_file" ]; then
+  if [ -f "$env_file" ]; then
     status "Importing application config vars"
     export $(egrep -v "^(PATH|GIT_DIR|CPATH|CPPATH|LD_PRELOAD|LIBRARY_PATH)" "$env_file")
   fi
@@ -127,10 +139,13 @@ if [ -f "$build_dir/Gruntfile.js" -a -f "$build_dir/node_modules/.bin/grunt" ]; 
   $build_dir/node_modules/.bin/grunt $grunt_options build 2>&1 | indent
 fi
 
-status "Caching node_modules directory for future builds"
-rm -rf $cache_dir/node_modules
-mkdir -p $cache_dir
-test -d $build_dir/node_modules && cp -r $build_dir/node_modules $cache_dir/
+installed_node_modules_dirs="$(cd "$build_dir" >/dev/null && find . -type d -name node_modules -not -path '*/node_modules/*' -not -path './vendor/*' | cut -c 3-)"
+
+status "Caching node_modules directories for future builds"
+echo "$installed_node_modules_dirs" | while read line
+do
+  rm -rf "$cache_dir/$line" && mkdir -p "$cache_dir/$(dirname "$line")" && cp -r "$build_dir/$line" "$cache_dir/$(dirname "$line")"
+done
 
 if [ ! -d $global_cache_dir ]; then
   echo "-----> Caching npm cache directory for future builds"
