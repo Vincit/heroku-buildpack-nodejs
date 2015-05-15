@@ -146,19 +146,15 @@ installed_node_modules_dirs="$(cd "$build_dir" >/dev/null && find . -type d -nam
 echo "$installed_node_modules_dirs" | while read line
 do
   status "Caching $line for future builds"
-  rm -rf "$cache_dir/$line" && mkdir -p "$cache_dir/$(dirname "$line")" && cp -r "$build_dir/$line" "$cache_dir/$line"
+  mkdir -p "$cache_dir/$line" && rsync -a --delete "$build_dir/$line/" "$cache_dir/$line/"
 done
 
 if [ ! -d $global_cache_dir ]; then
   echo "-----> Caching npm cache directory for future builds"
-  rm -rf $cache_dir/.npm
-  mkdir -p $cache_dir/.npm
-  test -d $build_dir/.npm && cp -r $build_dir/.npm $cache_dir/.npm
+  mkdir -p $cache_dir/.npm && rsync -a --delete $build_dir/.npm/ $cache_dir/.npm/
 
   echo "-----> Caching bower cache directory for future builds"
-  rm -rf $cache_dir/.cache/bower
-  mkdir -p $cache_dir/.cache
-  test -d $HOME/.cache/bower && cp -r $HOME/.cache/bower $cache_dir/.cache/
+  mkdir -p $cache_dir/.cache/bower && rsync -a --delete $HOME/.cache/bower/ $cache_dir/.cache/bower/
 fi
 
 status "Cleaning up node-gyp and npm artifacts"
