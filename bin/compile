@@ -67,6 +67,7 @@ if [ -d $global_cache_dir ]; then
   rm -rf $build_dir/.npm
   ln -s $global_cache_dir/.npm $build_dir/.npm
 
+  echo "-----> Symlinking global bower cache"
   mkdir -p $global_cache_dir/.cache/bower
   mkdir -p $HOME/.cache
   rm -rf $HOME/.cache/bower
@@ -93,24 +94,24 @@ cached_node_modules_dirs="$(cd "$cache_dir" && find . -type d -name node_modules
 
 # If node_modules directory is checked into source control then
 # rebuild any native deps. Otherwise, restore from the build cache.
-if [ ! -z "$committed_node_modules_dirs" ]; then
-  status "Found existing node_modules directories; skipping cache"
-  status "Rebuilding any native dependencies"
+if [ -n "$committed_node_modules_dirs" ]; then
   echo "$committed_node_modules_dirs" | while read line
   do
-    pushd "$build_dir/$(dirname "$line")" >/dev/null && npm rebuild 2>&1 | indent && popd >/dev/null
+    status "Found existing node_modules directory $line"
+    status "Rebuilding any native dependencies"
+    pushd "$build_dir/$(dirname "$line")" >/dev/null; npm rebuild 2>&1 | indent; popd >/dev/null
   done
-elif [ ! -z "$cached_node_modules_dirs" ]; then
-  status "Restoring node_modules directories from cache"
-  echo "$cached_node_modules_dirs" | while read line
-  do
-    mkdir -p "$build_dir/$(dirname "$line")" && cp -r "$cache_dir/$line" "$build_dir/$(dirname "$line")"
-  done
+fi
 
-  status "Pruning cached dependencies not specified in package.json"
+if [ -n "$cached_node_modules_dirs" ]; then
   echo "$cached_node_modules_dirs" | while read line
   do
-    pushd "$build_dir/$(dirname "$line")" >/dev/null && npm prune 2>&1 | indent && popd >/dev/null
+    if [ ! -d "$build_dir/$line" ]; then
+      status "Restoring $line from cache"
+      mkdir -p "$build_dir/$(dirname "$line")" && cp -r "$cache_dir/$line" "$build_dir/$line"
+      status "Pruning cached dependencies not specified in package.json"
+      pushd "$build_dir/$(dirname "$line")" >/dev/null; npm prune 2>&1 | indent; popd >/dev/null
+    fi
   done
 fi
 
@@ -142,10 +143,10 @@ fi
 
 installed_node_modules_dirs="$(cd "$build_dir" >/dev/null && find . -type d -name node_modules -not -path '*/node_modules/*' -not -path './vendor/*' | cut -c 3-)"
 
-status "Caching node_modules directories for future builds"
 echo "$installed_node_modules_dirs" | while read line
 do
-  rm -rf "$cache_dir/$line" && mkdir -p "$cache_dir/$(dirname "$line")" && cp -r "$build_dir/$line" "$cache_dir/$(dirname "$line")"
+  status "Caching $line for future builds"
+  rm -rf "$cache_dir/$line" && mkdir -p "$cache_dir/$(dirname "$line")" && cp -r "$build_dir/$line" "$cache_dir/$line"
 done
 
 if [ ! -d $global_cache_dir ]; then
