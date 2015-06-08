@@ -150,11 +150,15 @@ do
 done
 
 if [ ! -d $global_cache_dir ]; then
-  echo "-----> Caching npm cache directory for future builds"
-  mkdir -p $cache_dir/.npm && rsync -a --delete $build_dir/.npm/ $cache_dir/.npm/
+  if [ -d $build_dir/.npm ]; then
+    echo "-----> Caching npm cache directory for future builds"
+    mkdir -p $cache_dir/.npm && rsync -a --delete $build_dir/.npm/ $cache_dir/.npm/
+  fi
 
-  echo "-----> Caching bower cache directory for future builds"
-  mkdir -p $cache_dir/.cache/bower && rsync -a --delete $HOME/.cache/bower/ $cache_dir/.cache/bower/
+  if [ -d $HOME/.cache/bower ]; then
+    echo "-----> Caching bower cache directory for future builds"
+    mkdir -p $cache_dir/.cache/bower && rsync -a --delete $HOME/.cache/bower/ $cache_dir/.cache/bower/
+  fi
 fi
 
 status "Cleaning up node-gyp and npm artifacts"
