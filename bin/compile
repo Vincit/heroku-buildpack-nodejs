@@ -106,9 +106,9 @@ fi
 if [ -n "$cached_node_modules_dirs" ]; then
   echo "$cached_node_modules_dirs" | while read line
   do
-    if [ ! -d "$build_dir/$line" ]; then
+    if [ -f "$build_dir/$(dirname "$line")/package.json" -a ! -d "$build_dir/$line" ]; then
       status "Restoring $line from cache"
-      mkdir -p "$build_dir/$(dirname "$line")" && cp -r "$cache_dir/$line" "$build_dir/$line"
+      cp -r "$cache_dir/$line" "$build_dir/$line"
       status "Pruning cached dependencies not specified in package.json"
       pushd "$build_dir/$(dirname "$line")" >/dev/null; npm prune 2>&1 | indent; popd >/dev/null
     fi
