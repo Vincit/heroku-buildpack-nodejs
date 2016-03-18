@@ -8,7 +8,6 @@ set -o pipefail   # dont ignore exit codes when piping output
 build_dir=$1
 cache_dir=$2
 env_file=$3
-global_cache_dir=/global_cache
 
 bp_dir=$(cd $(dirname $0); cd ..; pwd)
 
@@ -60,28 +59,30 @@ rm -rf $build_dir/node-v$node_version-linux-x64
 chmod +x $build_dir/vendor/node/bin/*
 PATH="$build_dir/vendor/node/bin:$PATH"
 
-# symlink from global cache directory
-if [ -d $global_cache_dir ]; then
-  echo "-----> Symlinking global npm cache"
-  mkdir -p $global_cache_dir/.npm
-  rm -rf $build_dir/.npm
-  ln -s $global_cache_dir/.npm $build_dir/.npm
+mkdir -p $cache_dir/.npm
+mkdir -p $cache_dir/.cache/bower $HOME/.cache
 
-  echo "-----> Symlinking global bower cache"
-  mkdir -p $global_cache_dir/.cache/bower
-  mkdir -p $HOME/.cache
-  rm -rf $HOME/.cache/bower
-  ln -s $global_cache_dir/.cache/bower $HOME/.cache/bower
-else
-  if test -d $cache_dir/.npm; then
-    echo "-----> Restoring npm cache directory from cache"
-    cp -r $cache_dir/.npm $build_dir/.npm
+rm -rf $HOME/.npm
+rm -rf $HOME/.cache/bower
+
+if [ "$SYMLINK_CACHES" = "y" ]; then
+  if [ -d $cache_dir/.npm ]; then
+    status "Symlinking npm cache directory to cache"
+    ln -s $cache_dir/.npm $HOME/.npm
   fi
 
-  if test -d $cache_dir/.cache/bower; then
-    echo "-----> Restoring bower cache directory from cache"
-    mkdir -p $HOME/.cache
-    rm -rf $HOME/.cache/bower
+  if [ -d $cache_dir/.cache/bower ]; then
+    status "Symlinking bower cache directory to cache"
+    ln -s $cache_dir/.cache/bower $HOME/.cache/bower
+  fi
+else
+  if [ -d $cache_dir/.npm ]; then
+    status "Restoring npm cache directory from cache"
+    cp -r $cache_dir/.npm $HOME/.npm
+  fi
+
+  if [ -d $cache_dir/.cache/bower ]; then
+    status "Restoring bower cache directory from cache"
     cp -r $cache_dir/.cache/bower $HOME/.cache/bower
   fi
 fi
@@ -107,8 +108,14 @@ if [ -n "$cached_node_modules_dirs" ]; then
   echo "$cached_node_modules_dirs" | while read line
   do
     if [ -f "$build_dir/$(dirname "$line")/package.json" -a ! -d "$build_dir/$line" ]; then
-      status "Restoring $line from cache"
-      cp -r "$cache_dir/$line" "$build_dir/$line"
+      if [ "$SYMLINK_CACHES" = "y" ]; then
+        status "Symlinking $line to cache"
+        ln -s "$cache_dir/$line" "$build_dir/$line"
+      else
+        status "Restoring $line from cache"
+        cp -a "$cache_dir/$line" "$build_dir/$line"
+      fi
+
       status "Pruning cached dependencies not specified in package.json"
       pushd "$build_dir/$(dirname "$line")" >/dev/null; npm prune 2>&1 | indent; popd >/dev/null
     fi
@@ -141,15 +148,20 @@ if [ -f "$build_dir/Gruntfile.js" -a -f "$build_dir/node_modules/.bin/grunt" ]; 
   $build_dir/node_modules/.bin/grunt $grunt_options build 2>&1 | indent
 fi
 
-installed_node_modules_dirs="$(cd "$build_dir" >/dev/null && find . -type d -name node_modules -not -path '*/node_modules/*' -not -path './vendor/*' | cut -c 3-)"
+installed_node_modules_dirs="$(cd "$build_dir" >/dev/null && find . \( -type l -or -type d \) -name node_modules -not -path '*/node_modules/*' -not -path './vendor/*' | cut -c 3-)"
 
 echo "$installed_node_modules_dirs" | while read line
 do
-  status "Caching $line for future builds"
-  mkdir -p "$cache_dir/$line" && rsync -a --delete "$build_dir/$line/" "$cache_dir/$line/"
+  if [ ! -d "$cache_dir/$line" -o "$SYMLINK_CACHES" != "y" ]; then
+    status "Caching $line for future builds"
+    mkdir -p "$cache_dir/$line" && rsync -a --delete "$build_dir/$line/" "$cache_dir/$line/"
+  else
+    status "Copying cached $line to build directory"
+    rm "$build_dir/$line" 2>/dev/null && cp -r "$cache_dir/$line" "$build_dir/$line" || status "failed"
+  fi
 done
 
-if [ ! -d $global_cache_dir ]; then
+if [ "$SYMLINK_CACHES" != "y" ]; then
   if [ -d $build_dir/.npm ]; then
     echo "-----> Caching npm cache directory for future builds"
     mkdir -p $cache_dir/.npm && rsync -a --delete $build_dir/.npm/ $cache_dir/.npm/
