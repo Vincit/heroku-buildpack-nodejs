@@ -14,9 +14,6 @@ bp_dir=$(cd $(dirname $0); cd ..; pwd)
 # Load some convenience functions like status(), echo(), and indent()
 source $bp_dir/bin/common.sh
 
-# Output npm debug info on error
-trap cat_npm_debug_log ERR
-
 # Look in package.json's engines.node field for a semver range
 semver_range=$(cat $build_dir/package.json | $bp_dir/vendor/jq -r .engines.node)
 
@@ -89,6 +86,13 @@ fi
 
 # Run subsequent node/npm commands from the build path
 cd $build_dir
+
+# Isolate temp directory and clean it up after we exit
+export TMPDIR=$(mktemp -d)
+function cleanup_tmp {
+  (shopt -s dotglob; rm -rf $TMPDIR/*)
+}
+trap cleanup_tmp INT TERM EXIT
 
 committed_node_modules_dirs="$(cd "$build_dir" && find . -type d -name node_modules -not -path '*/node_modules/*' -not -path './vendor/*' | cut -c 3-)"
 cached_node_modules_dirs="$(cd "$cache_dir" && find . -type d -name node_modules -not -path '*/node_modules/*' | cut -c 3-)"
@@ -177,6 +181,10 @@ status "Cleaning up node-gyp and npm artifacts"
 rm -rf "$build_dir/.node-gyp"
 rm -rf "$build_dir/.npm"
 rm -rf "$HOME/.cache/bower"
+
+status "Cleaning up temporary files"
+trap - INT TERM EXIT
+cleanup_tmp
 
 # If Procfile is absent, try to create one using `npm start`
 if [ ! -e $build_dir/Procfile ]; then
