@@ -16,9 +16,11 @@ source $bp_dir/bin/common.sh
 
 # Look in package.json's engines.node field for a semver range
 semver_range=$(cat $build_dir/package.json | $bp_dir/vendor/jq -r .engines.node)
+npm_semver_range=$(cat $build_dir/package.json | $bp_dir/vendor/jq -r .engines.npm)
 
 # Resolve node version using semver.io
 node_version=$(curl --silent --get --data-urlencode "range=${semver_range}" https://semver.io/node/resolve)
+npm_version=$(curl --silent --get --data-urlencode "range=${npm_semver_range}" https://semver.io/npm/resolve)
 
 # Recommend using semver ranges in a safe manner
 if [ "$semver_range" == "null" ]; then
@@ -28,6 +30,10 @@ elif [ "$semver_range" == "*" ]; then
   protip "Avoid using semver ranges like '*' in engines.node"
 elif [ ${semver_range:0:1} == ">" ]; then
   protip "Avoid using semver ranges starting with '>' in engines.node"
+fi
+
+if [ "$npm_semver_range" == "null" ]; then
+  npm_semver_range=""
 fi
 
 # Output info about requested range and resolved node version
@@ -55,6 +61,19 @@ rsync -a $build_dir/node-v$node_version-linux-x64/ $build_dir/vendor/node/
 rm -rf $build_dir/node-v$node_version-linux-x64
 chmod +x $build_dir/vendor/node/bin/*
 PATH="$build_dir/vendor/node/bin:$PATH"
+
+installed_npm_version="$(npm --version)"
+if [ "$npm_semver_range" == "" ]; then
+  status "Using default npm version: $installed_npm_version"
+else
+  status "Requested npm range: $npm_semver_range"
+  if [ "$installed_npm_version" == "$npm_version" ]; then
+    status "npm $installed_npm_version already installed with node"
+  else
+    status "Installing npm $npm_version (replacing version $installed_npm_version)..."
+    npm install --unsafe-perm --quiet -g npm@$npm_version 2>&1 >/dev/null
+  fi
+fi
 
 mkdir -p $cache_dir/.npm
 mkdir -p $cache_dir/.cache/bower $HOME/.cache
