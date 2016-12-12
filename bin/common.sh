@@ -17,7 +17,7 @@ protip() {
 # e.g. npm install | indent
 indent() {
   while read LINE; do
-    echo "       $LINE"
+    echo "       $LINE" || true
   done
 }
 
