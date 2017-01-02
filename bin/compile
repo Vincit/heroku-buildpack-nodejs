@@ -171,6 +171,12 @@ if [ -f "$build_dir/Gruntfile.js" -a -f "$build_dir/node_modules/.bin/grunt" ]; 
   $build_dir/node_modules/.bin/grunt $grunt_options build 2>&1 | indent
 fi
 
+if [ -f "$build_dir/gulpfile.js" -a -f "$build_dir/node_modules/.bin/gulp" ]; then
+  status "Running gulp build"
+
+  $build_dir/node_modules/.bin/gulp build 2>&1 | indent
+fi
+
 installed_node_modules_dirs="$(cd "$build_dir" >/dev/null && find . \( -type l -or -type d \) -name node_modules -not -path '*/node_modules/*' -not -path './vendor/*' | cut -c 3-)"
 
 echo "$installed_node_modules_dirs" | while read line
