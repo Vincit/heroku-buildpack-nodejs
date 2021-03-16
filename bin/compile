@@ -47,11 +47,10 @@ fi
 # Download node from Heroku's S3 mirror of nodejs.org/dist
 if [ ! -f "$cache_dir/node-v$node_version-linux-x64.tar.gz" ]; then
   status "Downloading and installing node (first run)"
-  node_url="http://s3pository.heroku.com/node/v$node_version/node-v$node_version-linux-x64.tar.gz"
-  curl $node_url -s -o - | tee $cache_dir/node-v$node_version-linux-x64.tar.gz | tar xzf - -C $build_dir
+  node_url="https://nodejs.org/dist/v$node_version/node-v$node_version-linux-x64.tar.gz"
+  curl $node_url -s -k -o - | tee $cache_dir/node-v$node_version-linux-x64.tar.gz | tar xzf - -C $build_dir
 else
   status "Installing node"
-  node_url="http://s3pository.heroku.com/node/v$node_version/node-v$node_version-linux-x64.tar.gz"
   tar xzf $cache_dir/node-v$node_version-linux-x64.tar.gz -C $build_dir
 fi
 
